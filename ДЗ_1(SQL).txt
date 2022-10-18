@@ -1,0 +1,117 @@
+1.¬ыберите заказчиков из √ермании, ‘ранции и ћадрида, выведите их название, страну и адрес.
+SELECT 
+CustomerName, 
+CASE
+	WHEN Country == 'Spain' and City == 'Madrid' Then Country
+    WHEN Country IN ('Germany', 'France') Then Country
+END as Country,
+Address
+FROM Customers
+WHERE 
+CASE
+	WHEN Country == 'Spain' and City == 'Madrid' Then Country
+    WHEN Country IN ('Germany', 'France') Then Country
+END IS NOT NULL;
+
+2.¬ыберите топ 3 страны по количеству заказчиков, выведите их названи€ и количество записей.
+SELECT
+Country, Count(CustomerName)
+FROM Customers
+GROUP BY Country
+ORDER BY Count(CustomerName) DESC
+LIMIT 3;
+
+3.¬ыберите перевозчика, который отправил 10-й по времени заказ, выведите его название, и дату отправлени€.
+SELECT s.ShipperName, out.OrderDate
+FROM Shippers s
+INNER JOIN
+(SELECT  MAX(orderDate), *
+FROM 
+	(SELECT 
+	*	
+	FROM Orders
+	Order BY OrderDate LIMIT 10)) out
+ON s.ShipperId == out.ShipperId;
+
+4. ¬ыберите самый дорогой заказ, выведите список товаров с их ценами.
+SELECT p.*
+FROM OrderDetails od
+LEFT JOIN Products p ON od.ProductID = p.ProductID
+INNER JOIN (Select o.OrderID ,SUM(Od.Quantity * p.Price) as sum_
+FROM Orders o
+LEFT JOIN OrderDetails od ON o.OrderID = od.OrderID
+LEFT JOIN Products p ON od.ProductID = p.ProductID
+GROUP BY o.OrderID
+ORDER BY SUM(Od.Quantity * p.Price) DESC
+LIMIT 1) out ON out.OrderID = od.OrderID
+
+5..  акой товар больше всего заказывали по количеству единиц товара, выведите его название и количество единиц в каждом из заказов.
+SELECT p.ProductName, od.OrderID, od.Quantity
+FROM OrderDetails od
+LEFT JOIN Products p ON p.productID = od.productID
+WHERE od.ProductID IN (Select p.ProductID
+FROM Orders o
+LEFT JOIN OrderDetails od ON o.OrderID = od.OrderID
+LEFT JOIN Products p ON od.ProductID = p.ProductID
+GROUP BY p.ProductID
+ORDER BY SUM(od.Quantity) DESC
+LIMIT 1)
+
+6. ¬ыведите топ 5 поставщиков по количеству заказов, выведите их названи€, страну, контактное лицо и телефон.
+SELECT SupplierName, Country, ContactName, Phone
+FROM Suppliers
+WHERE SupplierID IN (Select p.SupplierID
+FROM Orders o
+LEFT JOIN OrderDetails od ON o.OrderID = od.OrderID
+LEFT JOIN Products p ON od.ProductID = p.ProductID
+GROUP BY p.SupplierID
+ORDER BY count(Distinct od.OrderID) DESC
+LIMIT 5);
+
+7.  акую категорию товаров заказывали больше всего по стоимости в Ѕразилии, выведите страну, название категории и сумму.
+SELECT out.Country, c.CategoryName, out.sum_ FROM 
+Categories c
+INNER JOIN (Select p.CategoryID, SUM(p.Price * od.Quantity) as sum_, c.Country
+FROM Orders o
+LEFT JOIN OrderDetails od ON o.OrderID = od.OrderID
+LEFT JOIN Products p ON od.ProductID = p.ProductID
+LEFT JOIN Customers c ON o.CustomerID = c.CustomerID
+WHERE c.Country = 'Brazil'
+GROUP BY p.CategoryID
+ORDER BY SUM(p.Price * od.Quantity) Desc
+LIMIT 1) out ON out.CategoryID = c.CategoryID;
+
+
+8.  ака€ разница в стоимости между самым дорогим и самым дешевым заказом из —Ўј.
+SELECT (one.sum_ - two.sum_) as diff FROM 
+(Select o.OrderID, SUM(Od.Quantity * p.Price) as sum_, 1 as id
+FROM Orders o
+LEFT JOIN OrderDetails od ON o.OrderID = od.OrderID
+LEFT JOIN Products p ON od.ProductID = p.ProductID
+LEFT JOIN Customers c ON o.CustomerID = c.CustomerID
+WHERE c.Country = 'USA'
+GROUP BY o.OrderID
+ORDER BY SUM(Od.Quantity * p.Price) DESC
+LIMIT 1) one
+LEFT JOIN  (Select o.OrderID, SUM(Od.Quantity * p.Price) as sum_, 1 as id
+FROM Orders o
+LEFT JOIN OrderDetails od ON o.OrderID = od.OrderID
+LEFT JOIN Products p ON od.ProductID = p.ProductID
+LEFT JOIN Customers c ON o.CustomerID = c.CustomerID
+WHERE c.Country = 'USA'
+GROUP BY o.OrderID
+ORDER BY SUM(Od.Quantity * p.Price) ASC
+LIMIT 1) two ON two.id = one.id;
+
+9. ¬ыведите количество заказов у каждого их трех самых молодых сотрудников, а также им€ и фамилию во второй колонке.
+SELECT count(Distinct OrderID) as count_, e.FirstName || ' ' || e.LastName as Name
+FROM Orders o
+INNER JOIN (SELECT * FROM employees
+ORDER BY BirthDate DESC
+LIMIT 3) e ON e.EmployeeID = o.EmployeeID
+GROUP BY e.EmployeeID
+ORDER BY count_ DESC
+
+10. —колько банок крабового м€са всего было заказано.
+SELECT SUM(Quantity) as sum_  FROM OrderDetails
+WHERE ProductID = (SELECT ProductID FROM Products WHERE ProductName LIKE '%Crab%')
